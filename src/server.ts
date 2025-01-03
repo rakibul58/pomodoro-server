@@ -1,6 +1,7 @@
 import app from "./app";
 import config from "./config";
 import { disconnect, initializeRedis } from "./helpers/redisCache";
+import { logger } from "./helpers/winston";
 
 async function main() {
   try {
@@ -9,15 +10,15 @@ async function main() {
 
     const PORT = config.port || 5000;
     const server = app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
+      logger.info(`Server is running on port ${PORT}`);
     });
 
     // Graceful shutdown
     const shutdown = async () => {
-      console.log("Shutting down server...");
+      logger.warn("Shutting down server...");
       server.close(async () => {
         await disconnect();
-        console.log("Server and Redis connection closed");
+        logger.warn("Server and Redis connection closed");
         process.exit(0);
       });
     };
@@ -26,11 +27,11 @@ async function main() {
     process.on("SIGTERM", shutdown);
     process.on("SIGINT", shutdown);
     process.on("uncaughtException", async (error) => {
-      console.error("Uncaught Exception:", error);
+      logger.error("Uncaught Exception:", error);
       await shutdown();
     });
   } catch (error) {
-    console.error("Failed to start server:", error);
+    logger.error("Failed to start server:", error);
     process.exit(1);
   }
 }

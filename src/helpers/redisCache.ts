@@ -1,5 +1,6 @@
 import { createClient, RedisClientType } from "redis";
 import config from "../config";
+import { logger } from "./winston";
 
 let client: RedisClientType | null = null;
 
@@ -28,14 +29,14 @@ const createRedisClient = (): RedisClientType => {
 const initializeRedis = async (): Promise<void> => {
   client = createRedisClient();
 
-  client.on("error", (err: Error) => console.log("Redis Client Error:", err));
-  client.on("connect", () => console.log("Redis Client Connected"));
-  client.on("disconnect", () => console.log("Redis Client Disconnected"));
+  client.on("error", (err: Error) => logger.error("Redis Client Error:", err));
+  client.on("connect", () => logger.info("Redis Client Connected"));
+  client.on("disconnect", () => logger.warn("Redis Client Disconnected"));
 
   try {
     await client.connect();
   } catch (error) {
-    console.error("Redis connection error:", error);
+    logger.error("Redis connection error:", error);
     throw error;
   }
 };
@@ -44,7 +45,7 @@ const disconnect = async (): Promise<void> => {
   try {
     await client?.disconnect();
   } catch (error) {
-    console.error("Redis disconnect error:", error);
+    logger.error("Redis disconnect error:", error);
     throw error;
   }
 };
@@ -65,7 +66,7 @@ const getOrSet = async <T>(
     await client.setEx(key, expiration, JSON.stringify(freshData));
     return freshData;
   } catch (error) {
-    console.error("Redis getOrSet error:", error);
+    logger.error("Redis getOrSet error:", error);
     throw error;
   }
 };
@@ -84,7 +85,7 @@ const set = async <T>(
     }
     return await client.set(key, serializedValue);
   } catch (error) {
-    console.error("Redis set error:", error);
+    logger.error("Redis set error:", error);
     throw error;
   }
 };
@@ -96,7 +97,7 @@ const get = async <T>(key: string): Promise<T | null> => {
     const value = await client.get(key);
     return value ? (JSON.parse(value) as T) : null;
   } catch (error) {
-    console.error("Redis get error:", error);
+    logger.error("Redis get error:", error);
     throw error;
   }
 };
@@ -107,7 +108,7 @@ const del = async (key: string): Promise<number> => {
   try {
     return await client.del(key);
   } catch (error) {
-    console.error("Redis delete error:", error);
+    logger.error("Redis delete error:", error);
     throw error;
   }
 };
@@ -118,7 +119,7 @@ const exists = async (key: string): Promise<number> => {
   try {
     return await client.exists(key);
   } catch (error) {
-    console.error("Redis exists error:", error);
+    logger.error("Redis exists error:", error);
     throw error;
   }
 };
