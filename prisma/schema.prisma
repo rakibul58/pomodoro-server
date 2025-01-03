@@ -9,288 +9,52 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  // directUrl = env("DIRECT_URL")
 }
 
 model User {
-  id                 String     @id @default(uuid())
-  email              String     @unique
-  password           String
-  role               UserRole
-  needPasswordChange Boolean    @default(false)
-  status             UserStatus @default(ACTIVE)
-  createdAt          DateTime   @default(now())
-  updatedAt          DateTime   @updatedAt
-  admin              Admin?
-  vendor             Vendor?
-  customer           Customer?
-
-  @@map("users")
-}
-
-model Admin {
-  id     String  @id @default(uuid())
-  email  String  @unique
-  name   String?
-  phone  String?
-  userId String  @unique
-  user   User    @relation(fields: [userId], references: [id])
-
-  @@map("admins")
-}
-
-model Vendor {
   id            String         @id @default(uuid())
-  userId        String         @unique
-  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  isDeleted     Boolean        @default(false)
   email         String         @unique
-  phone         String
-  name          String?
-  logo          String?
-  description   String?
-  status        ShopStatus     @default(ACTIVE)
-  products      Product[]
-  shopFollowers ShopFollower[]
-  isOnboarded   Boolean        @default(false)
-  Review        Review[]
-  ReviewReply   ReviewReply[]
-  Cart          Cart[]
-  Order         Order[]
-
-  @@map("vendors")
-}
-
-model Customer {
-  id            String         @id @default(uuid())
-  userId        String         @unique
-  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  password      String
   name          String
-  phone         String
-  email         String         @unique
-  address       String
-  profileImg    String?
-  isDeleted     Boolean        @default(false)
-  shopsFollowed ShopFollower[]
-  Review        Review[]
-  Cart          Cart[]
-  Order         Order[]
-  RecentView    RecentView[]
-
-  @@map("customers")
+  avatarUrl     String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  focusSessions FocusSession[]
+  streaks       Streak[]
+  badges        Badge[]
 }
 
-model Product {
-  id             String    @id @default(uuid())
-  name           String
-  description    String
-  price          Decimal   @db.Decimal(10, 2)
-  category       Category? @relation(fields: [categoryId], references: [id])
-  categoryId     String?
-  vendor         Vendor    @relation(fields: [vendorId], references: [id])
-  vendorId       String
-  images         String[]
-  inventoryCount Int
-  discount       Decimal?  @default(0.00) @db.Decimal(5, 2)
-  isFlashSale    Boolean   @default(false)
-  averageRating  Float     @default(0.0)
-
-  createdAt  DateTime     @default(now())
-  updatedAt  DateTime     @updatedAt
-  isDeleted  Boolean      @default(false)
-  Review     Review[]
-  CartItem   CartItem[]
-  OrderItem  OrderItem[]
-  RecentView RecentView[]
-
-  @@map("products")
-}
-
-model Category {
-  id          String    @id @default(uuid())
-  name        String    @unique
-  description String?
-  image       String
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  isDeleted   Boolean   @default(false)
-  products    Product[]
-
-  @@map("categories")
-}
-
-model ShopFollower {
-  id         String   @id @default(uuid())
-  customer   Customer @relation(fields: [customerId], references: [id])
-  customerId String
-  vendor     Vendor   @relation(fields: [vendorId], references: [id])
-  vendorId   String
-
-  createdAt DateTime @default(now())
-
-  @@unique([customerId, vendorId])
-  @@map("shop_followers")
-}
-
-// Review System
-model Review {
-  id         String        @id @default(uuid())
-  customerId String
-  customer   Customer      @relation(fields: [customerId], references: [id])
-  productId  String
-  product    Product       @relation(fields: [productId], references: [id])
-  vendorId   String
-  vendor     Vendor        @relation(fields: [vendorId], references: [id])
-  rating     Int
-  comment    String?
-  replies    ReviewReply[]
-  createdAt  DateTime      @default(now())
-
-  @@unique([customerId, productId])
-  @@map("reviews")
-}
-
-model ReviewReply {
+model FocusSession {
   id        String   @id @default(uuid())
-  reviewId  String
-  review    Review   @relation(fields: [reviewId], references: [id])
-  vendorId  String
-  vendor    Vendor   @relation(fields: [vendorId], references: [id])
-  comment   String
-  createdAt DateTime @default(now())
+  userId    String
+  duration  Int
+  timestamp DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
 
-  @@map("review_replies")
+  @@index([userId, timestamp])
 }
 
-// Cart System
-model Cart {
-  id         String     @id @default(uuid())
-  customerId String
-  customer   Customer   @relation(fields: [customerId], references: [id])
-  vendorId   String
-  vendor     Vendor     @relation(fields: [vendorId], references: [id])
-  items      CartItem[]
-  createdAt  DateTime   @default(now())
-  updatedAt  DateTime   @updatedAt
-
-  @@unique([customerId, vendorId])
-  @@map("carts")
-}
-
-model CartItem {
-  id        String  @id @default(uuid())
-  cartId    String
-  cart      Cart    @relation(fields: [cartId], references: [id], onDelete: Cascade)
-  productId String
-  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
-  quantity  Int
-  price     Decimal @db.Decimal(10, 2)
-
-  @@map("cart_items")
-}
-
-// Order Management
-model Order {
-  id          String      @id @default(uuid())
-  customerId  String
-  customer    Customer    @relation(fields: [customerId], references: [id])
-  vendorId    String
-  vendor      Vendor      @relation(fields: [vendorId], references: [id])
-  totalAmount Decimal     @db.Decimal(10, 2)
-  status      OrderStatus @default(PENDING)
-  couponCode  String?
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  orderItems  OrderItem[]
-
-  @@map("orders")
-}
-
-model OrderItem {
-  id        String   @id @default(uuid())
-  orderId   String
-  order     Order    @relation(fields: [orderId], references: [id])
-  productId String
-  product   Product  @relation(fields: [productId], references: [id])
-  quantity  Int
-  price     Decimal  @db.Decimal(10, 2)
-  discount  Decimal? @db.Decimal(5, 2)
-
-  @@map("order_items")
-}
-
-// Recent Views Tracking
-model RecentView {
-  id         String   @id @default(uuid())
-  customerId String
-  customer   Customer @relation(fields: [customerId], references: [id])
-  productId  String
-  product    Product  @relation(fields: [productId], references: [id])
-  viewedAt   DateTime @default(now())
-
-  @@unique([customerId, productId])
-  @@map("recent_views")
-}
-
-// Coupon Management
-model Coupon {
-  id            String       @id @default(uuid())
-  code          String       @unique
-  description   String?
-  discountType  DiscountType
-  discountValue Decimal      @db.Decimal(10, 2)
+model Streak {
+  id            String   @id @default(uuid())
+  userId        String
   startDate     DateTime
-  endDate       DateTime
-  minPurchase   Decimal?     @db.Decimal(10, 2)
-  isActive      Boolean      @default(true)
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  currentStreak Int      @default(1)
+  isActive      Boolean  @default(true)
+  user          User     @relation(fields: [userId], references: [id])
 
-  @@map("coupons")
+  @@index([userId])
 }
 
-model Newsletter {
-  id        String           @id @default(uuid())
-  email     String           @unique
-  status    NewsletterStatus @default(SUBSCRIBED)
-  createdAt DateTime         @default(now())
-  updatedAt DateTime         @updatedAt
+model Badge {
+  id          String   @id @default(uuid())
+  userId      String
+  type        String
+  awardedAt   DateTime @default(now())
+  description String
+  user        User     @relation(fields: [userId], references: [id])
 
-  @@map("newsletters")
-}
-
-enum NewsletterStatus {
-  SUBSCRIBED
-  UNSUBSCRIBED
-}
-
-enum UserRole {
-  ADMIN
-  VENDOR
-  CUSTOMER
-}
-
-enum UserStatus {
-  DELETED
-  SUSPENDED
-  ACTIVE
-}
-
-enum ShopStatus {
-  DELETED
-  BLACKLISTED
-  ACTIVE
-}
-
-enum OrderStatus {
-  PENDING
-  PAID
-  CANCELLED
-}
-
-enum DiscountType {
-  PERCENTAGE
-  FIXED_AMOUNT
+  @@index([userId])
 }

@@ -1,5 +1,5 @@
 {
-  "name": "vendozy-server",
+  "name": "ph-pomodoro-server",
   "version": "1.0.0",
   "main": "index.js",
   "repository": "",
@@ -39,6 +39,7 @@
     "jsonwebtoken": "^9.0.2",
     "node-cron": "^3.0.3",
     "nodemailer": "^6.9.12",
+    "redis": "^4.7.0",
     "uuid": "^9.0.1",
     "zod": "^3.22.4"
   }

@@ -1,4 +1,3 @@
-import { sign } from "crypto";
 import dotenv from "dotenv";
 import path from "path";
 
@@ -23,4 +22,10 @@ export default {
   base_url: process.env.BASE_URL,
   store_id: process.env.STORE_ID,
   signature_key: process.env.SIGNATURE_KEY,
+  redis: {
+    host: process.env.REDIS_HOST,
+    port: process.env.REDIS_PORT,
+    password: process.env.REDIS_PASSWORD,
+    username: process.env.REDIS_USERNAME,
+  },
 };

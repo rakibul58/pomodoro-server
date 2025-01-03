@@ -27,13 +27,12 @@ const loginUser = catchAsync(async (req: Request, res: Response) => {
     data: {
       accessToken: result.accessToken,
       refreshToken: result.refreshToken,
-      needPasswordChange: result.needPasswordChange,
     },
   });
 });
 
-const customerRegistration = catchAsync(async (req: Request, res: Response) => {
-  const result = await AuthServices.customerRegistration(req.body);
+const userRegistration = catchAsync(async (req: Request, res: Response) => {
+  const result = await AuthServices.userRegistration(req.body);
 
   const { refreshToken, accessToken } = result;
 
@@ -54,34 +53,6 @@ const customerRegistration = catchAsync(async (req: Request, res: Response) => {
     data: {
       accessToken: result.accessToken,
       refreshToken: result.refreshToken,
-      needPasswordChange: result.needPasswordChange,
-    },
-  });
-});
-
-const vendorRegistration = catchAsync(async (req: Request, res: Response) => {
-  const result = await AuthServices.vendorRegistration(req.body);
-
-  const { refreshToken, accessToken } = result;
-
-  res.cookie("accessToken", accessToken, {
-    secure: config.env === "development" ? false : true,
-    httpOnly: true,
-  });
-
-  res.cookie("refreshToken", refreshToken, {
-    secure: config.env === "development" ? false : true,
-    httpOnly: true,
-  });
-
-  sendResponse(res, {
-    statusCode: StatusCodes.OK,
-    success: true,
-    message: "Logged in successfully!",
-    data: {
-      accessToken: result.accessToken,
-      refreshToken: result.refreshToken,
-      needPasswordChange: result.needPasswordChange,
     },
   });
 });
@@ -114,36 +85,9 @@ const changePassword = catchAsync(
   }
 );
 
-const forgotPassword = catchAsync(async (req: Request, res: Response) => {
-  const result = await AuthServices.forgotPassword(req.body);
-
-  sendResponse(res, {
-    statusCode: StatusCodes.OK,
-    success: true,
-    message: "Password reset link sent to your email!",
-    data: result,
-  });
-});
-
-const resetPassword = catchAsync(async (req: Request, res: Response) => {
-  const token = req.headers.authorization || "";
-
-  const result = await AuthServices.resetPassword(token, req.body);
-
-  sendResponse(res, {
-    statusCode: StatusCodes.OK,
-    success: true,
-    message: "Password Reset successfully!",
-    data: result,
-  });
-});
-
 export const AuthControllers = {
   loginUser,
   refreshToken,
   changePassword,
-  forgotPassword,
-  resetPassword,
-  customerRegistration,
-  vendorRegistration,
+  userRegistration,
 };
