@@ -1,6 +1,7 @@
 import express from "express";
 import { UserRoutes } from "../modules/user/user.routes";
 import { AuthRoutes } from "../modules/auth/auth.routes";
+import { FocusSessionRoutes } from "../modules/focus-sessions/focus-sessions.routes";
 
 const router = express.Router();
 
@@ -13,6 +14,10 @@ const moduleRoutes = [
   {
     path: "/auth",
     route: AuthRoutes,
+  },
+  {
+    path: "/focus-sessions",
+    route: FocusSessionRoutes,
   },
 ];
 

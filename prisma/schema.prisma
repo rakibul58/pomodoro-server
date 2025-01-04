@@ -22,17 +22,42 @@ model User {
   avatarUrl     String?
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
+  focusLevel    FocusLevel     @default(BEGINNER)
+  totalMinutes  Int            @default(0)
   focusSessions FocusSession[]
   streaks       Streak[]
   badges        Badge[]
 }
 
+enum FocusLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+  EXPERT
+  MASTER
+}
+
+enum SessionStatus {
+  COMPLETED
+  INTERRUPTED
+  PAUSED
+}
+
+enum BadgeCategory {
+  STREAK
+  MILESTONE
+  TIME
+  CONSISTENCY
+  SPECIAL
+}
+
 model FocusSession {
-  id        String   @id @default(uuid())
+  id        String        @id @default(uuid())
   userId    String
   duration  Int
-  timestamp DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id])
+  status    SessionStatus @default(COMPLETED)
+  timestamp DateTime      @default(now())
+  user      User          @relation(fields: [userId], references: [id])
 
   @@index([userId, timestamp])
 }
@@ -43,18 +68,24 @@ model Streak {
   startDate     DateTime
   currentStreak Int      @default(1)
   isActive      Boolean  @default(true)
+  maxStreak     Int      @default(1)
   user          User     @relation(fields: [userId], references: [id])
 
   @@index([userId])
 }
 
 model Badge {
-  id          String   @id @default(uuid())
+  id          String        @id @default(uuid())
   userId      String
-  type        String
-  awardedAt   DateTime @default(now())
+  category    BadgeCategory
+  level       Int
+  name        String
   description String
-  user        User     @relation(fields: [userId], references: [id])
+  criteria    Json
+  icon        String
+  awardedAt   DateTime      @default(now())
+  user        User          @relation(fields: [userId], references: [id])
 
+  @@unique([userId, category, level])
   @@index([userId])
 }
