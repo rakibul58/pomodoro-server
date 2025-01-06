@@ -47,7 +47,6 @@ enum BadgeCategory {
   STREAK
   MILESTONE
   TIME
-  CONSISTENCY
   SPECIAL
 }
 

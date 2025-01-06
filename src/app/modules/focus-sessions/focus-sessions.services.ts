@@ -120,102 +120,6 @@ const getBadges = async (user: JwtPayload) => {
   return badges;
 };
 
-const getUserMetrics = async (userId: string): Promise<IBadgeCriteria> => {
-  const cacheKey = `user-metrics:${userId}`;
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-
-  return await getOrSet(
-    cacheKey,
-    async () => {
-      // Helper function to create date range for a specific hour
-      const createHourRange = (baseDate: Date, hour: number) => {
-        const start = new Date(baseDate);
-        start.setHours(hour, 0, 0, 0);
-        return start;
-      };
-
-      const [
-        focusSessions,
-        totalMinutesResult,
-        streak,
-        consistencyDays,
-        earlyBirdSessions,
-        nightOwlSessions,
-      ] = await Promise.all([
-        // Basic metrics
-        prisma.focusSession.count({
-          where: { userId },
-        }),
-        prisma.focusSession.aggregate({
-          where: { userId },
-          _sum: { duration: true },
-        }),
-        prisma.streak.findFirst({
-          where: { userId, isActive: true },
-          orderBy: { startDate: "desc" },
-        }),
-        // Consistency (unique days with sessions in last 30 days)
-        prisma.focusSession.groupBy({
-          by: ["timestamp"],
-          where: {
-            userId,
-            timestamp: { gte: thirtyDaysAgo },
-          },
-        }),
-        // Early Bird (before 9 AM)
-        prisma.focusSession
-          .findMany({
-            where: {
-              userId,
-              timestamp: {
-                gte: thirtyDaysAgo,
-                lt: createHourRange(new Date(), 9), // Before 9 AM
-              },
-            },
-            select: {
-              id: true,
-            },
-          })
-          .then((sessions) => sessions.length),
-        // Night Owl (after 9 PM)
-        prisma.focusSession
-          .findMany({
-            where: {
-              userId,
-              timestamp: {
-                gte: createHourRange(new Date(), 21), // After 9 PM
-              },
-            },
-            select: {
-              id: true,
-            },
-          })
-          .then((sessions) => sessions.length),
-      ]);
-
-      // Separate query for weekend sessions
-      const weekendSessions = await prisma.$queryRaw<{ count: bigint }[]>`
-        SELECT COUNT(*)
-        FROM "FocusSession"
-        WHERE "userId" = ${userId}
-        AND "timestamp" >= ${thirtyDaysAgo}
-        AND EXTRACT(DOW FROM "timestamp") IN (0, 6)
-      `;
-
-      return {
-        focusSessions,
-        totalMinutes: totalMinutesResult._sum.duration || 0,
-        currentStreak: streak?.currentStreak || 0,
-        consistency: consistencyDays.length,
-        earlyBird: earlyBirdSessions,
-        nightOwl: nightOwlSessions,
-        weekendSessions: Number(weekendSessions[0]?.count || 0),
-      };
-    },
-    CACHE_DURATIONS.METRICS
-  );
-};
-
 const getStreaks = async (user: JwtPayload) => {
   const cacheKey = `streaks:${user.id}`;
 
@@ -302,7 +206,68 @@ const getDashboardSummary = async (user: JwtPayload) => {
   return summary;
 };
 
-const checkAndAwardBadges = async (userId: string) => {
+export const getUserMetrics = async (
+  userId: string
+): Promise<IBadgeCriteria> => {
+  // Get user's current streak
+  const streak = await prisma.streak.findFirst({
+    where: {
+      userId,
+      isActive: true,
+    },
+  });
+
+  // Get total focus sessions
+  const focusSessionCount = await prisma.focusSession.count({
+    where: {
+      userId,
+      status: "COMPLETED",
+    },
+  });
+
+  // Get total minutes
+  const totalMinutes = await prisma.focusSession.aggregate({
+    where: {
+      userId,
+      status: "COMPLETED",
+    },
+    _sum: {
+      duration: true,
+    },
+  });
+
+  // Get special metrics
+  const earlyBirdSessions = await prisma.focusSession.count({
+    where: {
+      userId,
+      status: "COMPLETED",
+      timestamp: {
+        lt: new Date(new Date().setHours(9, 0, 0, 0)),
+      },
+    },
+  });
+
+  const nightOwlSessions = await prisma.focusSession.count({
+    where: {
+      userId,
+      status: "COMPLETED",
+      timestamp: {
+        gt: new Date(new Date().setHours(21, 0, 0, 0)),
+      },
+    },
+  });
+
+  return {
+    currentStreak: streak?.currentStreak || 0,
+    focusSessions: focusSessionCount,
+    totalMinutes: totalMinutes._sum.duration || 0,
+    earlyBird: earlyBirdSessions,
+    nightOwl: nightOwlSessions,
+  };
+};
+
+// utils/badges.ts
+export const checkAndAwardBadges = async (userId: string) => {
   const metrics = await getUserMetrics(userId);
 
   for (const category of Object.keys(BADGE_DEFINITIONS) as BadgeCategory[]) {
@@ -334,14 +299,12 @@ const checkAndAwardBadges = async (userId: string) => {
               criteria: badge.criteria as Prisma.JsonObject,
             },
           });
-
           console.log(`User ${userId} earned badge: ${badge.name}`);
         }
       }
     }
   }
 
-  // Update user focus level based on total badges
   const badgeCount = await prisma.badge.count({
     where: { userId },
   });
@@ -363,7 +326,6 @@ const checkAndAwardBadges = async (userId: string) => {
   });
 };
 
-// Helper service for streak updates
 const updateStreak = async (userId: string) => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);

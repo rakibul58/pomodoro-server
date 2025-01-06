@@ -91,36 +91,6 @@ export const BADGE_DEFINITIONS = {
       icon: "time-diamond",
     },
   ],
-  [BadgeCategory.CONSISTENCY]: [
-    {
-      level: 1,
-      name: "Steady Starter",
-      description: "Completed focus sessions 3 days in a row",
-      criteria: { consistency: 3 },
-      icon: "consistency-bronze",
-    },
-    {
-      level: 2,
-      name: "Rhythm Master",
-      description: "Completed focus sessions 5 days in a row",
-      criteria: { consistency: 5 },
-      icon: "consistency-silver",
-    },
-    {
-      level: 3,
-      name: "Pattern Prophet",
-      description: "Completed focus sessions 10 days in a row",
-      criteria: { consistency: 10 },
-      icon: "consistency-gold",
-    },
-    {
-      level: 4,
-      name: "Habit Hero",
-      description: "Completed focus sessions 20 days in a row",
-      criteria: { consistency: 20 },
-      icon: "consistency-diamond",
-    },
-  ],
   [BadgeCategory.SPECIAL]: [
     {
       level: 1,
@@ -136,13 +106,6 @@ export const BADGE_DEFINITIONS = {
       criteria: { nightOwl: 5 },
       icon: "special-nightowl",
     },
-    {
-      level: 3,
-      name: "Weekend Warrior",
-      description: "Completed 10 focus sessions on weekends",
-      criteria: { weekendSessions: 10 },
-      icon: "special-weekend",
-    },
   ],
 };
 
@@ -156,8 +119,8 @@ export const CACHE_DURATIONS = {
 
 export const FOCUS_LEVEL_THRESHOLDS = {
   BEGINNER: 0,
-  INTERMEDIATE: 2,    
-  ADVANCED: 4,        
-  EXPERT: 7,        
-  MASTER: 12,       
+  INTERMEDIATE: 2,
+  ADVANCED: 4,
+  EXPERT: 7,
+  MASTER: 12,
 };

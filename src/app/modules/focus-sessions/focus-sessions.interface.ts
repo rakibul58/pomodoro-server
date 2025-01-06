@@ -68,6 +68,8 @@ export interface IBadgeCriteria {
   totalMinutes?: number;
   currentStreak?: number;
   consistency?: number;
+  earlyBird?: number;
+  nightOwl?: number;
 }
 
 export type TimeRange = "daily" | "weekly" | "monthly";
