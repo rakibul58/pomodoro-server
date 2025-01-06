@@ -18,6 +18,7 @@ const createFocusSession = async (
   user: JwtPayload,
   payload: IFocusSessionPayload
 ) => {
+  // First create the session
   const session = await prisma.focusSession.create({
     data: {
       userId: user.id,
@@ -25,10 +26,12 @@ const createFocusSession = async (
     },
   });
 
-  // Update streak and check for new badges
-  await updateStreak(user.id);
-  await checkAndAwardBadges(user.id);
-  await invalidateUserCaches(user.id);
+  // Process the rest asynchronously
+  Promise.all([
+    updateStreak(user.id),
+    checkAndAwardBadges(user.id),
+    invalidateUserCaches(user.id),
+  ]).catch(console.error);
 
   return session;
 };
@@ -207,7 +210,8 @@ const getDashboardSummary = async (user: JwtPayload) => {
 };
 
 export const getUserMetrics = async (
-  userId: string
+  userId: string,
+  timezone: string = "UTC" // Add timezone parameter with UTC default
 ): Promise<IBadgeCriteria> => {
   // Get user's current streak
   const streak = await prisma.streak.findFirst({
@@ -236,94 +240,81 @@ export const getUserMetrics = async (
     },
   });
 
-  // Get special metrics
-  const earlyBirdSessions = await prisma.focusSession.count({
-    where: {
-      userId,
-      status: "COMPLETED",
-      timestamp: {
-        lt: new Date(new Date().setHours(9, 0, 0, 0)),
-      },
-    },
-  });
+  // Use Prisma's datetime functions to convert UTC to local time
+  const earlyBirdSessions = await prisma.$queryRaw<{ count: number }[]>`
+    SELECT COUNT(*)::int
+    FROM "FocusSession"
+    WHERE "userId" = ${userId}
+      AND status = 'COMPLETED'
+      AND EXTRACT(HOUR FROM timestamp AT TIME ZONE ${timezone}) < 9
+  `;
 
-  const nightOwlSessions = await prisma.focusSession.count({
-    where: {
-      userId,
-      status: "COMPLETED",
-      timestamp: {
-        gt: new Date(new Date().setHours(21, 0, 0, 0)),
-      },
-    },
-  });
+  const nightOwlSessions = await prisma.$queryRaw<{ count: number }[]>`
+    SELECT COUNT(*)::int
+    FROM "FocusSession"
+    WHERE "userId" = ${userId}
+      AND status = 'COMPLETED'
+      AND EXTRACT(HOUR FROM timestamp AT TIME ZONE ${timezone}) >= 21
+  `;
 
   return {
     currentStreak: streak?.currentStreak || 0,
     focusSessions: focusSessionCount,
     totalMinutes: totalMinutes._sum.duration || 0,
-    earlyBird: earlyBirdSessions,
-    nightOwl: nightOwlSessions,
+    earlyBird: earlyBirdSessions[0].count,
+    nightOwl: nightOwlSessions[0].count,
   };
 };
 
-// utils/badges.ts
-export const checkAndAwardBadges = async (userId: string) => {
-  const metrics = await getUserMetrics(userId);
+const checkAndAwardBadges = async (userId: string) => {
+  // Get all metrics in a single query
+  const [metrics, existingBadges] = await Promise.all([
+    getUserMetrics(userId),
+    prisma.badge.findMany({
+      where: { userId },
+      select: { category: true, level: true },
+    }),
+  ]);
+
+  // Create a map for quick lookup
+  const existingBadgeMap = new Map(
+    existingBadges.map((b) => [`${b.category}-${b.level}`, true])
+  );
+
+  // Prepare badge creations
+  const badgeCreations = [];
 
   for (const category of Object.keys(BADGE_DEFINITIONS) as BadgeCategory[]) {
     const badges = BADGE_DEFINITIONS[category];
     for (const badge of badges) {
-      const qualifies = Object.entries(badge.criteria).every(([key, value]) => {
-        return (metrics[key as keyof IBadgeCriteria] as number) >= value;
-      });
-
-      if (qualifies) {
-        // Check if badge already awarded
-        const existingBadge = await prisma.badge.findFirst({
-          where: {
-            userId,
-            category,
-            level: badge.level,
-          },
+      const badgeKey = `${category}-${badge.level}`;
+      if (
+        !existingBadgeMap.get(badgeKey) &&
+        Object.entries(badge.criteria).every(
+          ([key, value]) =>
+            (metrics[key as keyof IBadgeCriteria] as number) >= value
+        )
+      ) {
+        badgeCreations.push({
+          userId,
+          category,
+          level: badge.level,
+          name: badge.name,
+          description: badge.description,
+          icon: badge.icon,
+          criteria: badge.criteria as Prisma.JsonObject,
         });
-
-        if (!existingBadge) {
-          await prisma.badge.create({
-            data: {
-              userId,
-              category,
-              level: badge.level,
-              name: badge.name,
-              description: badge.description,
-              icon: badge.icon,
-              criteria: badge.criteria as Prisma.JsonObject,
-            },
-          });
-          console.log(`User ${userId} earned badge: ${badge.name}`);
-        }
       }
     }
   }
 
-  const badgeCount = await prisma.badge.count({
-    where: { userId },
-  });
-
-  const newLevel =
-    badgeCount >= FOCUS_LEVEL_THRESHOLDS.MASTER
-      ? FocusLevel.MASTER
-      : badgeCount >= FOCUS_LEVEL_THRESHOLDS.EXPERT
-      ? FocusLevel.EXPERT
-      : badgeCount >= FOCUS_LEVEL_THRESHOLDS.ADVANCED
-      ? FocusLevel.ADVANCED
-      : badgeCount >= FOCUS_LEVEL_THRESHOLDS.INTERMEDIATE
-      ? FocusLevel.INTERMEDIATE
-      : FocusLevel.BEGINNER;
-
-  await prisma.user.update({
-    where: { id: userId },
-    data: { focusLevel: newLevel },
-  });
+  // Batch create badges if any
+  if (badgeCreations.length > 0) {
+    await prisma.badge.createMany({
+      data: badgeCreations,
+      skipDuplicates: true,
+    });
+  }
 };
 
 const updateStreak = async (userId: string) => {

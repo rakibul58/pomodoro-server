@@ -125,7 +125,7 @@ const changePassword = async (
   payload: { oldPassword: string; newPassword: string }
 ) => {
   // checking if the user exists in the db
-  console.log(user?.email);
+  // console.log(user?.email);
   const userData = await getOrSet(`user:${user.email}`, async () =>
     prisma.user.findUniqueOrThrow({
       where: {
