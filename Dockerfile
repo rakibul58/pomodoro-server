@@ -27,12 +27,12 @@ EXPOSE 5000
 # Define environment variables (adjust for your setup)
 ENV NODE_ENV="production"
 ENV PORT=5000
-ENV DATABASE_URL="postgresql://postgres.xluvsyqknsfskprrkmlw:PQjtif42YblxZz3l@aws-0-ap-south-1.pooler.supabase.com:6543/postgres?pgbouncer=true"
-ENV DIRECT_URL="postgresql://postgres.xluvsyqknsfskprrkmlw:PQjtif42YblxZz3l@aws-0-ap-south-1.pooler.supabase.com:5432/postgres"
+ENV DATABASE_URL=""
+ENV DIRECT_URL=""
 ENV SALT_ROUNDS=12
-ENV JWT_SECRET="47668a8d83f62482e27f2dc1f385183763c142fda27f9ce9d90b7fb814e548aa"
+ENV JWT_SECRET=""
 ENV EXPIRES_IN="30d"
-ENV REFRESH_TOKEN_SECRET="af7848693163052cb5828d190887a1e8b36d2b2d216de09cfd8f1da5b881a755"
+ENV REFRESH_TOKEN_SECRET=""
 ENV REFRESH_TOKEN_EXPIRES_IN="30d"
 ENV ENABLE_PRISMA_CACHING=false
 ENV REDIS_USERNAME=""
