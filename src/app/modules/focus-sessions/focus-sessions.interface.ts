@@ -67,7 +67,6 @@ export interface IBadgeCriteria {
   focusSessions?: number;
   totalMinutes?: number;
   currentStreak?: number;
-  consistency?: number;
   earlyBird?: number;
   nightOwl?: number;
 }
