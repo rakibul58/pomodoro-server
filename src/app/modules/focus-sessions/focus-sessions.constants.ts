@@ -153,3 +153,11 @@ export const CACHE_DURATIONS = {
   STREAKS: 300,
   BADGES: 300,
 };
+
+export const FOCUS_LEVEL_THRESHOLDS = {
+  BEGINNER: 0,
+  INTERMEDIATE: 2,    
+  ADVANCED: 4,        
+  EXPERT: 7,        
+  MASTER: 12,       
+};
